@@ -1,0 +1,3 @@
+name = Custom Search Form
+description = "Provides a Search Form."
+core = 7.x

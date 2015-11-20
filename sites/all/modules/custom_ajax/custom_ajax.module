@@ -1,0 +1,197 @@
+<?php
+
+    /**
+     * Implements hook_menu().
+     */
+    function custom_ajax_menu() {
+
+        $items = array();
+
+        $items['examples/form-example'] = array( //this creates a URL that will call this form at "examples/form-example"
+            'title' => 'Example Form', //page title
+            'description' => 'A form to mess around with.',
+            'page callback' => 'drupal_get_form', //this is the function that will be called when the page is accessed.  for a form, use drupal_get_form
+            'page arguments' => array('form_example_form'), //put the name of the form here
+            'access callback' => TRUE
+        );
+        $items['enquery'] = array(
+            'title' => 'Email Address',
+            'page callback' => 'drupal_get_form',
+            'page arguments' => array('contact_us_form'),
+            'access callback' => 'user_access',
+            'access arguments' => array('access content'),
+            'type' => MENU_NORMAL_ITEM,
+        );
+        $items['testing'] = array(
+            'title' => 'Contact Us form',
+            'page callback' => 'drupal_get_form',
+            'page arguments' => array('my_contact_us_form'),
+            'access callback' => 'user_access',
+            'access arguments' => array('access content'),
+            'type' => MENU_NORMAL_ITEM,
+        );
+    return $items;
+}
+
+function form_example_form($form, &$form_state) {
+    $form['student_type'] = array(
+        '#type' => 'select',
+        '#title' => t('What type of student are you?'),
+        '#options' => array(
+            'none' => t('--Select--'),
+            'high_school' => t('High School'),
+            'under_graduate' => t('Under Graduate'),
+            'post_graduate' => t('Post Graduate'),
+        ),
+    );
+   $form['high_school'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('High School Information'),
+        '#states' => array(
+            'visible' => array(
+                ':input[name="student_type"]' => array('value' => 'high_school'),
+            ),
+        ),
+    );
+    $form['high_school']['test'] = array(
+        '#type' => 'checkboxes',
+        '#options' => array(t('SAT'),t('CAT')),
+        '#title' => t('What Standardized test did you take?'),
+        '#states' => array(
+            'visible' => array(
+                ':input[name = "student_type"]' => array('value' => 'high_school'),
+            ),
+        ),
+    );
+
+    return $form;
+}
+
+function contact_us_form($form, &$form_state){
+    
+    $form['email'] = array(
+        '#type' => 'textfield',
+        '#title' => t('E-mail id : '),
+        '#size' => 40,
+        '#maxlength' => 100,
+        '#prefix' => '<div id ="show_wrapper_div">',
+        
+    );
+    
+    $form['message'] = array(
+        '#type' => 'markup',
+        '#markup' => '',
+        '#prefix' => '<div id ="show_wrong_div">',
+        '#suffix' => '</div>',
+    );
+    
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => 'Correct',
+        '#ajax' => array(
+            'callback' => 'contact_us_page',
+            'wrapper' => 'show_wrapper_div',
+            'method' => 'replace',
+            'effect' => 'fade',
+        ),
+    );
+    
+    $form['cancel'] = array(
+        '#type' => 'submit',
+        '#value' => 'Incorrect',
+        '#ajax' => array(
+            'callback' => 'contact_wrong_page',
+            'wrapper' => 'show_wrong_div',
+            'method' => 'replace',
+            'effect' => 'fade',
+        ),
+        '#suffix' => '</div>',
+    );
+    return $form;
+}
+
+function contact_us_page($form, &$form_state) {
+    dpm($form_state);
+    $name = $form_state['values']['email'];
+    return $name;
+    
+}
+function contact_wrong_page($form, &$form_state) {
+    $message = 'try again!';
+    return $message;
+}
+
+function my_contact_us_form($form, &$form_state) {
+    
+    $form['markup'] = array(
+        '#type' => 'markup',        
+        '#markup' => '',
+        
+    );
+    
+    $form['first_name'] = array(
+        '#type' => 'textfield',
+        '#title' => t('First Name : '),
+        '#size' => 40,
+        '#maxlength' => 100,          
+        '#description' => 'enter your first name.',
+        '#prefix' => '<div id ="name_wrapper_div">',
+        
+    );
+    
+    $form['last_name'] = array(
+        '#title' => 'Your Last Name',
+        '#type' => 'textfield',
+        '#size' => 40,
+        '#maxlength' => 100,       
+        '#description' => 'enter your last name.',
+        
+    );
+    
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => 'Submit',
+        '#ajax' => array(
+            'callback' => 'name_validation',
+            'wrapper' => 'name_wrapper_div',
+           /* 'method' => 'replace',
+            'effect' => 'fade',*/
+        ),
+        '#suffix' => '</div>',
+    );
+   
+   return $form; 
+
+}
+
+function name_validation($form, &$form_state) {
+//  dpm($form_state);
+   // $name = $form_state['values']['name'];
+    if($form_state['values']['first_name'] != '' && $form_state['values']['last_name'] !='') {
+        $name = "your name is ". $form_state['values']['first_name'] . " " . $form_state['values']['last_name'];
+        $form_state['complete form']['markup']['#markup'] = $name;
+        return $form_state['complete form']['markup']['#markup'];
+    }
+    elseif($form_state['values']['first_name'] == '' && $form_state['values']['last_name'] !='') {
+        $name = "First Name is not valid!";       
+      //  $form_state['complete form']['ajax_markup']['#markup']= array();
+        $form_state['complete form']['markup']['#markup'] = $name;
+      //  dpm($form_state);
+        return $form_state['complete form'];
+    }
+    elseif($form_state['values']['last_name'] == '' && $form_state['values']['first_name'] !='') {
+        $name = "Last Name is not valid!";
+        $form_state['complete form']['markup']['#markup'] = '';
+     //   dpm($form_state);
+     //   $form_state['complete form']['ajax_markup']['#markup']= array();
+        $form_state['complete form']['markup']['#markup'] = $name;         
+        return $form_state['complete form'];        
+    }    
+    else {
+     //   $form_state['complete form']['ajax_markup']['#markup']= array();
+     //   dpm($form_state);
+        $form_state['complete form']['markup']['#markup'] = 'First and Last both name is not valid!';
+        return $form_state['complete form'];   
+    }
+    
+}

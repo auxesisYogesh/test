@@ -1,0 +1,130 @@
+<?php
+function c_search_block_info() {
+	$blocks = array();
+	$blocks['custom_search_form'] = array(
+		'info' => t('custom search form Block'),
+	);
+	return $blocks;
+}
+function c_search_block_view($delta='')
+{
+	switch($delta) {
+		case 'custom_search_form':
+			$block['subject'] = 'custom search'; // Most forms don't have a subject 
+			$block['content'] = drupal_get_form('createForm');
+			break;
+		  
+		case 'content_form':
+			$block['subject'] = 'content selection'; // Most forms don't have a subject 
+			$block['content'] = drupal_get_form('custom_content_form');
+			break;
+		}
+	return $block;
+ }
+ 
+ 
+// hook_menu implementation
+function c_search_menu() {
+	$items = array();
+	$items['article/autocomplete/%'] = array(
+		'title' => t('AutoComp Menu'),
+		'page callback' => 'selectAllArticles',
+		'page arguments' => array(2),
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK,
+	);
+	return $items;
+}
+function createForm($form,$form_state) {
+	$form = array();
+	$var = isset($form_state['values']['active']) ? $form_state['values']['active'] :'';
+	$form['autocomplete'] = array(
+		'#type' => 'textfield',
+		'#title' => '',
+		'#placeholder' => 'search this website..',
+		'#autocomplete_path' => 'article/autocomplete/'.$var,
+		'#prefix' => '<div id="checkboxes-div">',
+		'#suffix' => '</div>',
+	);
+		$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Search'),
+		'#prefix' => '<div class="myclass"><span></span></div>',
+	);
+	$active = array( 'article'=> t('Article'),
+		'events' => t('Events'), 
+		'simpleads' => t('Simple Ad'), 
+		'vod' => t('VOD'), 
+		'user' => t('Users'),
+	);
+	$form['active'] = array(
+		'#type' => 'radios',
+		'#options' => $active,
+		'#ajax' => array(
+			'callback' => 'ajax_example_autocheckboxes_callback',
+			'wrapper' => 'checkboxes-div',
+			'method' => 'replace',
+			'effect' => 'fade',			
+		),
+		'#prefix' => '<div class = "form-item-custom-search-types" id="edit-custom-search-types">',
+		'#suffix' => '</div>',
+	);
+	return $form;
+}
+
+function selectAllArticles($var,$string) {
+	$content=$var;
+	$matches = array();
+	if(empty($content)) {
+		$result = db_query("SELECT title FROM {node} WHERE title LIKE '%$string%' LIMIT 10");
+		foreach($result as $item) {
+			$matches[$item->title] = check_plain($item->title);
+		}
+		drupal_json_output($matches);
+		exit;
+	}
+	else {
+			if($content == 'user') {
+				$result = db_query("SELECT name FROM {users} WHERE name LIKE '%$string%' LIMIT 10");
+				foreach($result as $item) {
+				$matches[$item->name] = check_plain($item->name);				
+			}
+			drupal_json_output($matches);
+			exit;
+		}
+		else {
+			$result = db_query("SELECT title FROM {node} WHERE title LIKE '%$string%' and type = '$content' LIMIT 10");
+			foreach($result as $item) {
+				$matches[$item->title] = check_plain($item->title);
+			}
+			drupal_json_output($matches);
+			exit;
+		} 
+	}
+}
+function createForm_submit($form, &$form_state) {
+	$value = $form_state['values']['autocomplete'];
+	$content_type = $_SESSION["content_type"];
+	if($content_type == 'user') {
+		$result = db_query("SELECT uid,name FROM {users} u WHERE name LIKE '%$value%'");
+		foreach($result as $item) {
+		}
+		$user_id = $item->uid;
+		drupal_goto('/user/'.$user_id);
+		unset($_SESSION["content_type"]);
+	}
+	else {		
+		$result = db_query("SELECT title,nid FROM {node} WHERE title LIKE '%$value%'");
+		foreach($result as $item) {
+		}
+		$node_id = $item->nid;
+		drupal_goto('/node/'.$node_id);
+		unset($_SESSION["content_type"]);
+	}
+}
+function ajax_example_autocheckboxes_callback($form,&$form_state) {
+	return $form['autocomplete'];
+}
+
+
+
